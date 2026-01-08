@@ -1,0 +1,87 @@
+# Редирект с www на без www (HTTP)
+server {
+    listen 80;
+    server_name www.sonzaiigi.art;
+
+    return 301 https://sonzaiigi.art$request_uri;
+}
+
+# Редирект с www на без www (HTTPS)
+server {
+    listen 443 ssl;
+    server_name www.sonzaiigi.art;
+
+    ssl_certificate /etc/letsencrypt/live/sonzaiigi.art/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/sonzaiigi.art/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    return 301 https://sonzaiigi.art$request_uri;
+}
+
+# Основной сервер для sonzaiigi.art без www
+server {
+    listen 80;
+    server_name sonzaiigi.art;
+
+    return 301 https://sonzaiigi.art$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name sonzaiigi.art;
+
+    ssl_certificate /etc/letsencrypt/live/sonzaiigi.art/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/sonzaiigi.art/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    root /var/www/sonzaiigi.art/public;
+    index index.php index.html;
+
+    access_log /var/log/nginx/sonzaiigi.art.access.log;
+    error_log /var/log/nginx/sonzaiigi.art.error.log;
+
+    client_max_body_size 100M;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+
+        fastcgi_buffers 32 32k;
+        fastcgi_buffer_size 64k;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
+        expires max;
+        log_not_found off;
+    }
+
+    location /phpmyadmin {
+    root /usr/share/;
+    index index.php index.html index.htm;
+    location ~ ^/phpmyadmin/(.+\.php)$ {
+        try_files $uri =404;
+        root /usr/share/;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock; # Убедитесь, что путь соответствует вашей версии PHP
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+
+    }
+
+    location ~* ^/phpmyadmin/(.+\.(jpg|jpeg|gif|css|png|js|ico|html|xml|txt))$ {
+        root /usr/share/;
+    }
+}
+}
